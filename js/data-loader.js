@@ -180,6 +180,114 @@
     return Object.values(CW.PACKS || {});
   }
 
+  // ---- Пользовательские паки (загруженные через UI) ----
+  // Хранятся в localStorage в виде {id, source} — source это исходник IIFE
+  // который при eval'е регистрирует себя в CW.PACKS.
+  const USER_PACKS_KEY = 'cw_user_packs_v1';
+
+  function getUserPacks() {
+    try {
+      const raw = localStorage.getItem(USER_PACKS_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
+  }
+
+  function saveUserPacks(arr) {
+    try {
+      localStorage.setItem(USER_PACKS_KEY, JSON.stringify(arr));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // Загружает все user-паки из localStorage и регистрирует их в CW.PACKS.
+  // Вызывается на старте, до assembleWords.
+  function loadStoredUserPacks() {
+    const stored = getUserPacks();
+    for (const item of stored) {
+      try {
+        // eval source. Source — это IIFE который вызывает CW.PACKS[id] = {...}.
+        // new Function вместо eval — изолирует от текущей лексической среды.
+        (new Function(item.source))();
+        // Помечаем зарегистрированный пак как user-pack для UI
+        if (CW.PACKS && CW.PACKS[item.id]) {
+          CW.PACKS[item.id].isUser = true;
+        }
+      } catch (e) {
+        if (typeof console !== 'undefined') {
+          console.warn('CW.DataLoader: ошибка загрузки user-пака ' + item.id + ': ' + e.message);
+        }
+      }
+    }
+  }
+
+  // Регистрирует новый user-пак из исходника. Возвращает {ok, packId, error}.
+  // Источник — содержимое .js файла (IIFE с регистрацией CW.PACKS[id]).
+  function registerUserPack(source) {
+    if (typeof source !== 'string' || source.trim().length === 0) {
+      return { ok: false, error: 'Пустой файл.' };
+    }
+    if (source.length > 500000) {
+      return { ok: false, error: 'Файл слишком большой (>500 КБ).' };
+    }
+    // Запоминаем какие паки были до eval — чтобы понять какой добавился.
+    const before = new Set(Object.keys(CW.PACKS || {}));
+    try {
+      (new Function(source))();
+    } catch (e) {
+      return { ok: false, error: 'Ошибка выполнения: ' + e.message };
+    }
+    const after = Object.keys(CW.PACKS || {});
+    const newIds = after.filter(id => !before.has(id));
+    if (newIds.length === 0) {
+      return { ok: false, error: 'Файл не зарегистрировал ни одного пакета. Проверьте формат — должна быть IIFE, регистрирующая CW.PACKS[id].' };
+    }
+    // Берём первый зарегистрированный новый пак
+    const packId = newIds[0];
+    const pack = CW.PACKS[packId];
+    if (!pack || !Array.isArray(pack.words) || pack.words.length === 0) {
+      delete CW.PACKS[packId];
+      return { ok: false, error: 'Пакет не содержит слов.' };
+    }
+    pack.isUser = true;
+    // Сохраняем в localStorage
+    const stored = getUserPacks();
+    // Если уже был такой id — заменяем
+    const filtered = stored.filter(item => item.id !== packId);
+    filtered.push({ id: packId, source: source });
+    if (!saveUserPacks(filtered)) {
+      delete CW.PACKS[packId];
+      return { ok: false, error: 'Не удалось сохранить в localStorage (превышена квота).' };
+    }
+    // Помечаем как known + auto-enable
+    const known = getKnownPackIds();
+    if (!known.includes(packId)) setKnownPackIds(known.concat([packId]));
+    const enabled = getEnabledPackIds();
+    if (enabled !== null && !enabled.includes(packId)) {
+      setEnabledPackIds(enabled.concat([packId]));
+    }
+    assembleWords();
+    return { ok: true, packId, packName: pack.name };
+  }
+
+  function removeUserPack(packId) {
+    const stored = getUserPacks();
+    const filtered = stored.filter(item => item.id !== packId);
+    if (filtered.length === stored.length) return false;
+    saveUserPacks(filtered);
+    if (CW.PACKS) delete CW.PACKS[packId];
+    // Также удаляем из known/enabled
+    const known = getKnownPackIds().filter(id => id !== packId);
+    setKnownPackIds(known);
+    const enabled = getEnabledPackIds();
+    if (enabled !== null) {
+      setEnabledPackIds(enabled.filter(id => id !== packId));
+    }
+    assembleWords();
+    return true;
+  }
+
   // Авто-подхват новых паков: если пак никогда не встречался раньше
   // (нет в KNOWN_KEY), его автоматически добавляем в enabled. Это
   // отличает «новый пак, ещё не виденный» от «пак, который пользователь
@@ -226,7 +334,11 @@
     getEnabledPackIds,
     setEnabledPackIds,
     assembleWords,
+    registerUserPack,
+    removeUserPack,
     init() {
+      // Подгружаем сохранённые user-паки до сборки CW.WORDS.
+      loadStoredUserPacks();
       // Совместимость: если CW.WORDS уже задан напрямую (старая версия),
       // используем как есть; иначе собираем из базы + паков.
       if (Array.isArray(CW.BASE_WORDS_RAW)) {

@@ -12,7 +12,7 @@ Pet-проект — генератор печатных кроссвордов 
 - **Запуск:** `file:///` через двойной клик. Никакого dev-сервера на стороне пользователя.
 - **Данные:** `data/*.js` подключаются как `<script>`, не как JSON (fetch блокируется через `file:///`).
 - **Namespace:** все JS-модули вешают API на `window.CW`. Нет `type="module"`.
-- **Cache-bust:** в HTML каждому `<script>` и `<link>` приписан `?v=N`. После правок — bump `v`. Сейчас v=32.
+- **Cache-bust:** в HTML каждому `<script>` и `<link>` приписан `?v=N`. После правок — bump `v`. Сейчас v=33.
 - **Локальная разработка:** открыть `index.html` через `file:///` или поднять любой http-сервер на корне проекта (например `python -m http.server 8866`).
 
 ## Структура файлов
@@ -192,4 +192,4 @@ for (let i=0; i<20; i++) {
 - v29 — UX-набор: пер-fieldset toggle + раздельная печать. Toggle переделан в v30.
 - v30 — feedback round 2: subtitle обобщён, сворачиваемые настройки переделаны (одна общая кнопка по умолчанию свёрнута), раздельная печать из v29 сохранена.
 - v31 — рефакторинг сканворда (двухклеточные клю-боксы, `clueBoxAbsorbed`, ext/single режимы). Откачено в v32.
-- **v32 (текущая)** — **СКАНВОРДЫ УДАЛЕНЫ ПОЛНОСТЬЮ**. Целевой пользователь отверг формат: «останавливаемся на кроссвордах». Удалены: `generator-scanword.js` (файл), fieldset «Тип» в UI (был radio classic/scanword), все CSS-правила `.cell.clue-box*` / `.scanbox-*` / `.dual` (ui.css + print.css), переменные `--color-cluebox-bg` и `--scanbox-*-pt`, поле `clueBox` в `grid.cells`, ветвление по `opts.type` в app.js, переменная `currentType`, `orphanClues` в puzzles.js, `entry.type` в saved-puzzles, упоминания во всех clue/comments/README/CLAUDE.md/words.js. Заголовок «Генератор кроссвордов и сканвордов» → «Генератор кроссвордов». Поле `shortClue` в данных оставлено как legacy (не используется, не мешает, ~600 записей).
+- v32 — **СКАНВОРДЫ УДАЛЕНЫ ПОЛНОСТЬЮ**. Целевой пользователь отверг формат: «останавливаемся на кроссвордах». Удалены: `generator-scanword.js` (файл), fieldset «Тип» в UI (был radio classic/scanword), все CSS-правила `.cell.clue-box*` / `.scanbox-*` / `.dual` (ui.css + print.css), переменные `--color-cluebox-bg` и `--scanbox-*-pt`, поле `clueBox` в `grid.cells`, ветвление по `opts.type` в app.js, переменная `currentType`, `orphanClues` в puzzles.js, `entry.type` в saved-puzzles, упоминания во всех clue/comments/README/CLAUDE.md/words.js. Заголовок «Генератор кроссвордов и сканвордов» → «Генератор кроссвордов». Поле `shortClue` в данных оставлено как legacy (не используется, не мешает, ~600 записей).

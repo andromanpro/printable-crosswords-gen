@@ -170,6 +170,49 @@ html, body {
   color: var(--color-muted);
   margin-left: auto;
 }
+.pack-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.pack-delete {
+  padding: 0 6px;
+  font-size: 14px;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid var(--color-panel-border);
+  color: var(--color-muted);
+  margin-left: 4px;
+  cursor: pointer;
+}
+.pack-delete:hover {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+.pack-item-user {
+  border-left: 2px solid var(--color-accent);
+  padding-left: 6px;
+  margin-left: -8px;
+}
+.packs-upload {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-panel-border);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.upload-pack-status {
+  font-size: 12px;
+}
+.upload-pack-status.ok { color: #2a7a2a; }
+.upload-pack-status.err { color: var(--color-accent); }
 .status-muted { color: var(--color-muted); font-size: 13px; }
 
 .ctrl-buttons {

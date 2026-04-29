@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Генератор кроссвордов</title>
-  <link rel="stylesheet" href="css/ui.css?v=32">
-  <link rel="stylesheet" href="css/print.css?v=32">
+  <link rel="stylesheet" href="css/ui.css?v=33">
+  <link rel="stylesheet" href="css/print.css?v=33">
 </head>
 <body>
 
@@ -73,6 +73,13 @@
       <div id="packs-list" class="packs-list">
         <span class="status-muted">Загрузка…</span>
       </div>
+      <div class="packs-upload">
+        <button type="button" id="btn-upload-pack" class="btn-subtle" title="Загрузить свой пак из .js-файла. См. README → «Свой корпус слов».">
+          + Загрузить свой пак
+        </button>
+        <input type="file" id="input-upload-pack" accept=".js" hidden>
+        <span id="upload-pack-status" class="upload-pack-status"></span>
+      </div>
     </fieldset>
 
   </div>
@@ -108,27 +115,27 @@
   <ul id="history-list" class="history-list"></ul>
 </section>
 
-<script src="data/words.js?v=32"></script>
-<script src="data/pack-power-sports.js?v=32"></script>
-<script src="data/pack-ta-world.js?v=32"></script>
-<script src="data/pack-champions-ussr.js?v=32"></script>
-<script src="data/pack-olympic-culture.js?v=32"></script>
-<script src="data/pack-spirit-witty.js?v=32"></script>
-<script src="data/pack-hockey.js?v=32"></script>
-<script src="data/pack-football.js?v=32"></script>
-<script src="data/pack-snooker.js?v=32"></script>
-<script src="data/pack-combat-sports.js?v=32"></script>
-<script src="data/pack-winter-sports.js?v=32"></script>
-<script src="data/pack-figure-rhythmic.js?v=32"></script>
-<script src="data/pack-tennis.js?v=32"></script>
-<script src="data/pack-world-stars.js?v=32"></script>
-<script src="js/data-loader.js?v=32"></script>
-<script src="js/rng.js?v=32"></script>
-<script src="js/history.js?v=32"></script>
-<script src="js/puzzles.js?v=32"></script>
-<script src="js/grid.js?v=32"></script>
-<script src="js/generator-classic.js?v=32"></script>
-<script src="js/renderer.js?v=32"></script>
-<script src="js/app.js?v=32"></script>
+<script src="data/words.js?v=33"></script>
+<script src="data/pack-power-sports.js?v=33"></script>
+<script src="data/pack-ta-world.js?v=33"></script>
+<script src="data/pack-champions-ussr.js?v=33"></script>
+<script src="data/pack-olympic-culture.js?v=33"></script>
+<script src="data/pack-spirit-witty.js?v=33"></script>
+<script src="data/pack-hockey.js?v=33"></script>
+<script src="data/pack-football.js?v=33"></script>
+<script src="data/pack-snooker.js?v=33"></script>
+<script src="data/pack-combat-sports.js?v=33"></script>
+<script src="data/pack-winter-sports.js?v=33"></script>
+<script src="data/pack-figure-rhythmic.js?v=33"></script>
+<script src="data/pack-tennis.js?v=33"></script>
+<script src="data/pack-world-stars.js?v=33"></script>
+<script src="js/data-loader.js?v=33"></script>
+<script src="js/rng.js?v=33"></script>
+<script src="js/history.js?v=33"></script>
+<script src="js/puzzles.js?v=33"></script>
+<script src="js/grid.js?v=33"></script>
+<script src="js/generator-classic.js?v=33"></script>
+<script src="js/renderer.js?v=33"></script>
+<script src="js/app.js?v=33"></script>
 </body>
 </html>

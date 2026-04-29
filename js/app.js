@@ -53,6 +53,12 @@
     document.getElementById('btn-history-toggle').addEventListener('click', onHistoryToggle);
     document.getElementById('btn-history-clear').addEventListener('click', onHistoryClear);
 
+    // Загрузка пользовательского пака из .js-файла
+    document.getElementById('btn-upload-pack').addEventListener('click', () => {
+      document.getElementById('input-upload-pack').click();
+    });
+    document.getElementById('input-upload-pack').addEventListener('change', onUploadPack);
+
     applyFontSize();
     applyFitA4();
     applyHideAnswers();
@@ -130,8 +136,8 @@
     }
     for (const pack of packs) {
       const wrapper = document.createElement('label');
-      wrapper.className = 'pack-item';
-      wrapper.title = pack.description;
+      wrapper.className = 'pack-item' + (pack.isUser ? ' pack-item-user' : '');
+      wrapper.title = pack.description || '';
 
       const nameRow = document.createElement('div');
       nameRow.className = 'pack-item-name';
@@ -144,19 +150,75 @@
       const nm = document.createElement('span');
       nm.textContent = pack.name;
       nameRow.appendChild(nm);
+      if (pack.isUser) {
+        const badge = document.createElement('span');
+        badge.className = 'pack-badge';
+        badge.textContent = 'свой';
+        nameRow.appendChild(badge);
+      }
       const cnt = document.createElement('span');
       cnt.className = 'pack-count';
       cnt.textContent = '+' + (pack.words?.length || 0);
       nameRow.appendChild(cnt);
+      if (pack.isUser) {
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'pack-delete';
+        del.textContent = '×';
+        del.title = 'Удалить пак «' + pack.name + '»';
+        del.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (!confirm('Удалить пак «' + pack.name + '»?')) return;
+          CW.DataLoader.removeUserPack(pack.id);
+          renderPacksList();
+          updateStatus();
+        });
+        nameRow.appendChild(del);
+      }
       wrapper.appendChild(nameRow);
 
-      const desc = document.createElement('div');
-      desc.className = 'pack-item-desc';
-      desc.textContent = pack.description;
-      wrapper.appendChild(desc);
+      if (pack.description) {
+        const desc = document.createElement('div');
+        desc.className = 'pack-item-desc';
+        desc.textContent = pack.description;
+        wrapper.appendChild(desc);
+      }
 
       container.appendChild(wrapper);
     }
+  }
+
+  function onUploadPack(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    const statusEl = document.getElementById('upload-pack-status');
+    if (!file) return;
+    if (!/\.js$/i.test(file.name)) {
+      statusEl.textContent = '✗ нужен .js-файл';
+      statusEl.className = 'upload-pack-status err';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const source = String(e.target.result || '');
+      const result = CW.DataLoader.registerUserPack(source);
+      if (result.ok) {
+        statusEl.textContent = '✓ загружен пак «' + result.packName + '»';
+        statusEl.className = 'upload-pack-status ok';
+        renderPacksList();
+        updateStatus();
+      } else {
+        statusEl.textContent = '✗ ' + result.error;
+        statusEl.className = 'upload-pack-status err';
+      }
+      // Сбрасываем input — чтобы можно было загрузить тот же файл повторно
+      ev.target.value = '';
+    };
+    reader.onerror = function () {
+      statusEl.textContent = '✗ ошибка чтения файла';
+      statusEl.className = 'upload-pack-status err';
+    };
+    reader.readAsText(file, 'UTF-8');
   }
 
   function onPackToggle(ev) {
