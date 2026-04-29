@@ -1,0 +1,500 @@
+// Bootstrap: связывает UI-элементы с движком генерации.
+
+(function () {
+  'use strict';
+
+  let currentGrid = null;
+  let currentPuzzleId = null;   // id записи в истории, если показываем из истории
+  let serial = 1;
+
+  function init() {
+    if (!window.CW || !CW.WORDS || CW.WORDS.length === 0) {
+      showError('Корпус слов не загружен. Проверьте, что файл data/words.js доступен.');
+      return;
+    }
+    serial = parseInt(localStorage.getItem('cw_serial') || '1', 10) || 1;
+
+    // Восстанавливаем сохранённую тему оформления, если есть
+    try {
+      const savedTheme = localStorage.getItem('cw_theme_ui_v1');
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        const r = document.querySelector('input[name="theme-ui"][value="' + savedTheme + '"]');
+        if (r) r.checked = true;
+      }
+    } catch (e) { /* ignore */ }
+
+    document.getElementById('btn-generate').addEventListener('click', onGenerate);
+    document.getElementById('btn-toggle-answers').addEventListener('click', onToggleAnswers);
+    document.getElementById('btn-print').addEventListener('click', onPrint);
+    document.getElementById('btn-print-grid').addEventListener('click', onPrintGridOnly);
+    document.getElementById('btn-print-clues').addEventListener('click', onPrintCluesOnly);
+    document.getElementById('btn-reset-history').addEventListener('click', onResetHistory);
+
+    // Радио «Размер шрифта» — мгновенное применение
+    document.querySelectorAll('input[name=fontsize]').forEach(r => {
+      r.addEventListener('change', applyFontSize);
+    });
+    // Чекбокс «Уместить на 1 лист A4»
+    document.getElementById('fit-a4').addEventListener('change', applyFitA4);
+    // Чекбокс «Не печатать ответы»
+    document.getElementById('hide-answers-print').addEventListener('change', applyHideAnswers);
+
+    // Радио «Стиль подсказок» — переключение на лету без перегенерации
+    document.querySelectorAll('input[name=cluestyle]').forEach(r => {
+      r.addEventListener('change', onClueStyleChange);
+    });
+
+    // Радио «Тема оформления» (светлая/тёмная) — мгновенное применение
+    document.querySelectorAll('input[name=theme-ui]').forEach(r => {
+      r.addEventListener('change', applyThemeUi);
+    });
+
+    // История генерации
+    document.getElementById('btn-history-toggle').addEventListener('click', onHistoryToggle);
+    document.getElementById('btn-history-clear').addEventListener('click', onHistoryClear);
+
+    applyFontSize();
+    applyFitA4();
+    applyHideAnswers();
+    applyThemeUi();
+    initCollapsibleGroups();
+    renderPacksList();
+    renderHistoryList();
+    updateStatus();
+  }
+
+  // ---- Сворачиваемая панель настроек (одна общая кнопка) ----
+  // Клик по «Настройки ▶» toggle'ит весь блок .ctrl-grid.
+  // По умолчанию свёрнуто. Состояние в localStorage.
+  function initCollapsibleGroups() {
+    const KEY = 'cw_settings_expanded_v1';
+    const btn = document.getElementById('btn-toggle-settings');
+    const grid = document.getElementById('ctrl-grid');
+    if (!btn || !grid) return;
+
+    let expanded = false;
+    try {
+      const saved = localStorage.getItem(KEY);
+      expanded = saved === '1';
+    } catch (e) {}
+
+    const apply = () => {
+      grid.classList.toggle('collapsed', !expanded);
+      btn.classList.toggle('expanded', expanded);
+    };
+    apply();
+
+    btn.addEventListener('click', () => {
+      expanded = !expanded;
+      apply();
+      try { localStorage.setItem(KEY, expanded ? '1' : '0'); } catch (e) {}
+    });
+  }
+
+  function applyThemeUi() {
+    const theme = document.querySelector('input[name="theme-ui"]:checked')?.value || 'light';
+    document.body.classList.remove('theme-light', 'theme-dark');
+    document.body.classList.add('theme-' + theme);
+    try { localStorage.setItem('cw_theme_ui_v1', theme); } catch (e) { /* ignore */ }
+  }
+
+  function onClueStyleChange() {
+    if (!currentGrid) return;
+    const opts = getOpts();
+    rerenderClues(opts);
+  }
+
+  // Перерисовать ТОЛЬКО подсказки (список определений + ответы),
+  // не трогая саму сетку и состояние ответов. Используется при смене стиля.
+  function rerenderClues(opts) {
+    if (!currentGrid) return;
+    const style = opts.cluestyle || 'direct';
+    const cluesContainer = document.getElementById('clues-container');
+    CW.Renderer.renderCluesList(currentGrid, cluesContainer, { cluestyle: style });
+    // Перерисовка страницы ответов
+    const ansContainer = document.getElementById('answer-key');
+    const wasVisible = ansContainer.classList.contains('visible');
+    CW.Renderer.renderAnswerKey(currentGrid, ansContainer, { cluestyle: style });
+    if (wasVisible) ansContainer.classList.add('visible');
+  }
+
+  // ---- Тематические паки ----
+
+  function renderPacksList() {
+    const container = document.getElementById('packs-list');
+    const packs = CW.DataLoader.listPacks();
+    container.innerHTML = '';
+    if (packs.length === 0) {
+      container.innerHTML = '<span class="status-muted">Паки не подключены.</span>';
+      return;
+    }
+    for (const pack of packs) {
+      const wrapper = document.createElement('label');
+      wrapper.className = 'pack-item';
+      wrapper.title = pack.description;
+
+      const nameRow = document.createElement('div');
+      nameRow.className = 'pack-item-name';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = CW.DataLoader.isPackEnabled(pack.id);
+      cb.dataset.packId = pack.id;
+      cb.addEventListener('change', onPackToggle);
+      nameRow.appendChild(cb);
+      const nm = document.createElement('span');
+      nm.textContent = pack.name;
+      nameRow.appendChild(nm);
+      const cnt = document.createElement('span');
+      cnt.className = 'pack-count';
+      cnt.textContent = '+' + (pack.words?.length || 0);
+      nameRow.appendChild(cnt);
+      wrapper.appendChild(nameRow);
+
+      const desc = document.createElement('div');
+      desc.className = 'pack-item-desc';
+      desc.textContent = pack.description;
+      wrapper.appendChild(desc);
+
+      container.appendChild(wrapper);
+    }
+  }
+
+  function onPackToggle(ev) {
+    const packId = ev.target.dataset.packId;
+    if (!packId) return;
+    // Получим текущий список (или дефолт = все включены)
+    let enabled = CW.DataLoader.getEnabledPackIds();
+    if (enabled === null) {
+      enabled = CW.DataLoader.listPacks().map(p => p.id);
+    }
+    if (ev.target.checked) {
+      if (!enabled.includes(packId)) enabled.push(packId);
+    } else {
+      enabled = enabled.filter(id => id !== packId);
+    }
+    CW.DataLoader.setEnabledPackIds(enabled);
+    CW.DataLoader.assembleWords();
+    updateStatus();
+  }
+
+  function applyFontSize() {
+    const size = document.querySelector('input[name=fontsize]:checked')?.value || 'medium';
+    document.body.classList.remove('font-small', 'font-medium', 'font-large', 'font-xlarge');
+    document.body.classList.add('font-' + size);
+  }
+
+  function applyFitA4() {
+    const fit = document.getElementById('fit-a4')?.checked;
+    document.body.classList.toggle('fit-a4', !!fit);
+  }
+
+  function applyHideAnswers() {
+    const hide = document.getElementById('hide-answers-print')?.checked;
+    document.body.classList.toggle('no-print-answers', !!hide);
+  }
+
+  // ---- История кроссвордов ----
+
+  function renderHistoryList() {
+    const listEl = document.getElementById('history-list');
+    const countEl = document.getElementById('history-count');
+    const items = CW.Puzzles.list();
+    countEl.textContent = items.length === 0
+      ? 'пусто'
+      : `${items.length} / ${CW.Puzzles.MAX}`;
+
+    listEl.innerHTML = '';
+    if (items.length === 0) {
+      listEl.innerHTML = '<li class="history-item" style="cursor:default;color:#999;">Пока нет сохранённых кроссвордов. Сгенерируй первый — он появится здесь.</li>';
+      return;
+    }
+    for (const p of items) {
+      const li = document.createElement('li');
+      li.className = 'history-item';
+      if (p.id === currentPuzzleId) li.classList.add('current');
+      li.dataset.puzzleId = p.id;
+
+      const main = document.createElement('div');
+      main.className = 'history-item-main';
+      const t = document.createElement('div');
+      t.className = 'history-item-title';
+      t.textContent = p.title;
+      const meta = document.createElement('div');
+      meta.className = 'history-item-meta';
+      const d = new Date(p.createdAt);
+      const tm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      meta.textContent = `${p.size}×${p.size} · слов: ${p.grid.placements.length} · ${tm}`;
+      main.appendChild(t);
+      main.appendChild(meta);
+      li.appendChild(main);
+
+      const del = document.createElement('button');
+      del.className = 'history-item-delete';
+      del.type = 'button';
+      del.textContent = 'удалить';
+      del.title = 'Удалить из истории';
+      del.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (!confirm('Удалить «' + p.title + '» из истории?')) return;
+        CW.Puzzles.remove(p.id);
+        if (currentPuzzleId === p.id) {
+          currentPuzzleId = null;
+          updateBanner();
+        }
+        renderHistoryList();
+      });
+      li.appendChild(del);
+
+      li.addEventListener('click', () => loadFromHistory(p.id));
+      listEl.appendChild(li);
+    }
+  }
+
+  function loadFromHistory(id) {
+    const entry = CW.Puzzles.get(id);
+    if (!entry) return;
+
+    currentGrid = entry.grid;
+    currentPuzzleId = id;
+
+    // Восстанавливаем состояние UI чтобы соответствовать сохранённой записи
+    const titleEl = document.getElementById('puzzle-title');
+    titleEl.textContent = entry.title;
+    document.title = entry.title.replace(/·/g, '-');
+
+    const opts = { size: entry.size, difficulty: entry.difficulty, theme: entry.theme };
+    const style = getCurrentClueStyle();
+    const gridContainer = document.getElementById('grid-container');
+    CW.Renderer.renderGrid(currentGrid, gridContainer, { cluestyle: style });
+
+    const cluesContainer = document.getElementById('clues-container');
+    CW.Renderer.renderCluesList(currentGrid, cluesContainer, { cluestyle: style });
+
+    const ansContainer = document.getElementById('answer-key');
+    CW.Renderer.renderAnswerKey(currentGrid, ansContainer, { cluestyle: style });
+    ansContainer.classList.remove('visible');
+    document.getElementById('btn-toggle-answers').textContent = 'Показать ответы';
+    gridContainer.classList.remove('show-answers');
+
+    renderHistoryList();
+    updateBanner();
+    document.getElementById('grid-container').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+
+  function updateBanner() {
+    const banner = document.getElementById('history-banner');
+    if (!currentPuzzleId) {
+      banner.classList.remove('visible');
+      banner.innerHTML = '';
+      return;
+    }
+    const entry = CW.Puzzles.get(currentPuzzleId);
+    if (!entry) {
+      banner.classList.remove('visible');
+      return;
+    }
+    const d = new Date(entry.createdAt);
+    const tm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    banner.innerHTML = `Просмотр из истории — создан ${tm}. <button id="btn-banner-close" type="button">Скрыть из просмотра</button>`;
+    banner.classList.add('visible');
+    document.getElementById('btn-banner-close').addEventListener('click', () => {
+      currentPuzzleId = null;
+      updateBanner();
+      renderHistoryList();
+    });
+  }
+
+  function onHistoryToggle() {
+    const list = document.getElementById('history-list');
+    const btn = document.getElementById('btn-history-toggle');
+    if (list.classList.contains('visible')) {
+      list.classList.remove('visible');
+      btn.textContent = 'Показать';
+    } else {
+      list.classList.add('visible');
+      btn.textContent = 'Скрыть';
+    }
+  }
+
+  function onHistoryClear() {
+    if (CW.Puzzles.count() === 0) return;
+    if (!confirm('Очистить всю историю кроссвордов? Это нельзя отменить.')) return;
+    CW.Puzzles.clear();
+    currentPuzzleId = null;
+    updateBanner();
+    renderHistoryList();
+  }
+
+  function getOpts() {
+    const size = parseInt(document.querySelector('input[name=size]:checked').value, 10);
+    const diffRaw = document.querySelector('input[name=difficulty]:checked').value;
+    const difficulty = (diffRaw === 'mixed') ? 'mixed' : parseInt(diffRaw, 10);
+    const theme = document.querySelector('input[name=theme]:checked').value;
+    const cluestyle = document.querySelector('input[name=cluestyle]:checked')?.value || 'direct';
+    return { size, difficulty, theme, cluestyle };
+  }
+
+  function getCurrentClueStyle() {
+    return document.querySelector('input[name=cluestyle]:checked')?.value || 'direct';
+  }
+
+  function buildPool(opts) {
+    return CW.DataLoader.buildPool(CW.WORDS, {
+      maxDifficulty: opts.difficulty,
+      sizeLimit: opts.size,
+      theme: opts.theme
+    });
+  }
+
+  function isMixedMode(opts) {
+    return opts.difficulty === 'mixed';
+  }
+
+  function onGenerate() {
+    const opts = getOpts();
+    const rawPool = buildPool(opts);
+    const seen = CW.History.seenIds();
+    const prioritized = CW.DataLoader.prioritize(rawPool, seen);
+
+    if (prioritized.length < 8) {
+      showError('Недостаточно слов в корпусе для выбранных параметров. Попробуйте увеличить сложность или сбросить историю.');
+      return;
+    }
+
+    const seed = (Date.now() & 0xfffffff) ^ Math.floor(Math.random() * 0xfffff);
+    const genOpts = { seed, balanceDifficulty: isMixedMode(opts) };
+    const result = CW.GeneratorClassic.generate(prioritized, opts.size, genOpts);
+
+    if (!result.ok) {
+      showError('Не удалось собрать сетку: ' + (result.reason || 'неизвестная ошибка') + '. Попробуйте ещё раз или измените параметры.');
+      return;
+    }
+
+    currentGrid = result.grid;
+    currentPuzzleId = null;
+    const placedIds = result.grid.placements.map(p => p.wordId);
+    CW.History.add(placedIds);
+
+    serial++;
+    try { localStorage.setItem('cw_serial', String(serial)); } catch (e) { /* ignore */ }
+
+    const titleText = makeTitle(serial - 1);
+    renderResult(opts, titleText);
+
+    // Сохраняем полное состояние сетки в истории кроссвордов
+    currentPuzzleId = CW.Puzzles.save(result.grid, opts, titleText, serial - 1);
+    renderHistoryList();
+    updateBanner();
+    updateStatus(result);
+  }
+
+  function makeTitle(num) {
+    const today = formatDate(new Date());
+    return `Кроссворд № ${num} · ${today}`;
+  }
+
+  function renderResult(opts, titleText) {
+    const titleEl = document.getElementById('puzzle-title');
+    titleEl.textContent = titleText;
+    document.title = titleText.replace(/·/g, '-');
+
+    const style = opts.cluestyle || 'direct';
+    const gridContainer = document.getElementById('grid-container');
+    CW.Renderer.renderGrid(currentGrid, gridContainer, { cluestyle: style });
+
+    const cluesContainer = document.getElementById('clues-container');
+    CW.Renderer.renderCluesList(currentGrid, cluesContainer, { cluestyle: style });
+
+    const ansContainer = document.getElementById('answer-key');
+    CW.Renderer.renderAnswerKey(currentGrid, ansContainer, { cluestyle: style });
+    ansContainer.classList.remove('visible');
+    document.getElementById('btn-toggle-answers').textContent = 'Показать ответы';
+    gridContainer.classList.remove('show-answers');
+  }
+
+  function onToggleAnswers() {
+    const ansContainer = document.getElementById('answer-key');
+    const gridContainer = document.getElementById('grid-container');
+    const btn = document.getElementById('btn-toggle-answers');
+    if (ansContainer.classList.contains('visible')) {
+      ansContainer.classList.remove('visible');
+      gridContainer.classList.remove('show-answers');
+      btn.textContent = 'Показать ответы';
+    } else {
+      ansContainer.classList.add('visible');
+      gridContainer.classList.add('show-answers');
+      btn.textContent = 'Скрыть ответы';
+    }
+  }
+
+  function onPrint() {
+    if (!currentGrid) {
+      showError('Сначала сгенерируйте кроссворд.');
+      return;
+    }
+    window.print();
+  }
+
+  // Раздельная печать: только сетка (без блока вопросов и ответов)
+  function onPrintGridOnly() {
+    if (!currentGrid) { showError('Сначала сгенерируйте кроссворд.'); return; }
+    runPrintWithBodyClass('print-only-grid');
+  }
+  // Раздельная печать: только вопросы (крупным шрифтом, без сетки)
+  function onPrintCluesOnly() {
+    if (!currentGrid) { showError('Сначала сгенерируйте кроссворд.'); return; }
+    runPrintWithBodyClass('print-only-clues');
+  }
+  function runPrintWithBodyClass(cls) {
+    document.body.classList.add(cls);
+    const cleanup = () => {
+      document.body.classList.remove(cls);
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    // Fallback — на старых браузерах afterprint может не сработать сразу
+    setTimeout(cleanup, 2000);
+    window.print();
+  }
+
+  function onResetHistory() {
+    if (!confirm('Сбросить историю показанных вопросов? Это нельзя отменить.')) return;
+    CW.History.reset();
+    updateStatus();
+  }
+
+  function updateStatus(result) {
+    const el = document.getElementById('status');
+    const cnt = CW.History.count();
+    const corpusTotal = CW.WORDS?.length || 0;
+    let txt = `Корпус: ${corpusTotal} слов · В истории показанных: ${cnt} / ${CW.History.MAX_ENTRIES}.`;
+    if (!CW.History.isPersistent()) txt += ' (История не сохраняется — localStorage недоступен.)';
+    if (result && result.metrics) {
+      txt = `Размещено слов: ${result.metrics.placed}. Пересечений: ${result.metrics.intersections}. ` + txt;
+    }
+    el.textContent = txt;
+  }
+
+  function showError(msg) {
+    const gridContainer = document.getElementById('grid-container');
+    const cluesContainer = document.getElementById('clues-container');
+    const ansContainer = document.getElementById('answer-key');
+    gridContainer.innerHTML = `<div class="error-msg">${msg}</div>`;
+    cluesContainer.innerHTML = '';
+    ansContainer.innerHTML = '';
+    ansContainer.classList.remove('visible');
+  }
+
+  function formatDate(d) {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

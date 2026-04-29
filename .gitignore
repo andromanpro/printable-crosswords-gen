@@ -1,0 +1,19 @@
+# Локальные файлы Claude Code и других IDE
+.claude/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Логи
+*.log
+
+# Прочее
+.scannerwork/
+node_modules/
+*.bak
+*.tmp
+*~

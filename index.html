@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Генератор кроссвордов</title>
+  <link rel="stylesheet" href="css/ui.css?v=32">
+  <link rel="stylesheet" href="css/print.css?v=32">
+</head>
+<body>
+
+<header class="controls">
+  <h1 class="app-title">Генератор кроссвордов</h1>
+  <p class="app-sub">Спорт, шахматы, космонавтика и общая эрудиция</p>
+
+  <button id="btn-toggle-settings" type="button" class="btn-toggle-settings">
+    <span class="caret">▶</span> Настройки
+  </button>
+
+  <div class="ctrl-grid" id="ctrl-grid">
+
+    <fieldset class="ctrl-group">
+      <legend>Размер</legend>
+      <label><input type="radio" name="size" value="11"> S 11×11</label>
+      <label><input type="radio" name="size" value="13" checked> M 13×13</label>
+      <label><input type="radio" name="size" value="15"> L 15×15</label>
+      <label><input type="radio" name="size" value="21"> XL 21×21</label>
+      <label><input type="radio" name="size" value="25"> XXL 25×25</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group">
+      <legend>Сложность</legend>
+      <label><input type="radio" name="difficulty" value="1"> Лёгкая</label>
+      <label><input type="radio" name="difficulty" value="2"> Средняя</label>
+      <label><input type="radio" name="difficulty" value="3"> Сложная</label>
+      <label><input type="radio" name="difficulty" value="mixed" checked> Любые (вперемешку)</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group">
+      <legend>Тема</legend>
+      <label><input type="radio" name="theme" value="70_30" checked> 70/30 (спорт + общее)</label>
+      <label><input type="radio" name="theme" value="100_sport"> 100% спорт</label>
+      <label><input type="radio" name="theme" value="50_50"> 50/50</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group">
+      <legend>Размер шрифта</legend>
+      <label><input type="radio" name="fontsize" value="small"> Мелкий</label>
+      <label><input type="radio" name="fontsize" value="medium" checked> Средний</label>
+      <label><input type="radio" name="fontsize" value="large"> Крупный</label>
+      <label><input type="radio" name="fontsize" value="xlarge"> Очень крупный</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group">
+      <legend>Стиль подсказок</legend>
+      <label><input type="radio" name="cluestyle" value="direct" checked> Прямые (фактические)</label>
+      <label><input type="radio" name="cluestyle" value="cryptic"> Хитрые (с намёком)</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group">
+      <legend>Тема оформления</legend>
+      <label><input type="radio" name="theme-ui" value="light" checked> Светлая</label>
+      <label><input type="radio" name="theme-ui" value="dark"> Тёмная</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group">
+      <legend>Печать</legend>
+      <label><input type="checkbox" id="fit-a4"> Уместить всё на 1 лист A4</label>
+      <label><input type="checkbox" id="hide-answers-print"> Не печатать ответы</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group ctrl-packs" id="packs-fieldset">
+      <legend>Тематические паки</legend>
+      <div id="packs-list" class="packs-list">
+        <span class="status-muted">Загрузка…</span>
+      </div>
+    </fieldset>
+
+  </div>
+
+  <div class="ctrl-buttons">
+    <button id="btn-generate" type="button" class="btn-primary">Сгенерировать</button>
+    <button id="btn-toggle-answers" type="button">Показать ответы</button>
+    <button id="btn-print" type="button">Печать всё</button>
+    <button id="btn-print-grid" type="button" title="Печать только сетки (без вопросов)">Печать сетки</button>
+    <button id="btn-print-clues" type="button" title="Печать только вопросов крупным шрифтом">Печать вопросов</button>
+    <button id="btn-reset-history" type="button" class="btn-subtle">Сбросить историю</button>
+  </div>
+
+  <p class="status" id="status">Нажмите «Сгенерировать», чтобы создать первый кроссворд.</p>
+</header>
+
+<main>
+  <p id="history-banner" class="history-banner"></p>
+  <h2 class="puzzle-title" id="puzzle-title"></h2>
+  <div id="grid-container" class="grid-container"></div>
+  <div id="clues-container" class="clues-container"></div>
+  <div id="answer-key" class="answer-key"></div>
+</main>
+
+<section class="history-panel" id="history-panel">
+  <div class="history-header">
+    <h2 class="history-title">История <span id="history-count" class="history-count"></span></h2>
+    <div class="history-buttons">
+      <button id="btn-history-toggle" type="button" class="btn-subtle">Показать</button>
+      <button id="btn-history-clear" type="button" class="btn-subtle">Очистить</button>
+    </div>
+  </div>
+  <ul id="history-list" class="history-list"></ul>
+</section>
+
+<script src="data/words.js?v=32"></script>
+<script src="data/pack-power-sports.js?v=32"></script>
+<script src="data/pack-ta-world.js?v=32"></script>
+<script src="data/pack-champions-ussr.js?v=32"></script>
+<script src="data/pack-olympic-culture.js?v=32"></script>
+<script src="data/pack-spirit-witty.js?v=32"></script>
+<script src="data/pack-hockey.js?v=32"></script>
+<script src="data/pack-football.js?v=32"></script>
+<script src="data/pack-snooker.js?v=32"></script>
+<script src="data/pack-combat-sports.js?v=32"></script>
+<script src="data/pack-winter-sports.js?v=32"></script>
+<script src="data/pack-figure-rhythmic.js?v=32"></script>
+<script src="data/pack-tennis.js?v=32"></script>
+<script src="data/pack-world-stars.js?v=32"></script>
+<script src="js/data-loader.js?v=32"></script>
+<script src="js/rng.js?v=32"></script>
+<script src="js/history.js?v=32"></script>
+<script src="js/puzzles.js?v=32"></script>
+<script src="js/grid.js?v=32"></script>
+<script src="js/generator-classic.js?v=32"></script>
+<script src="js/renderer.js?v=32"></script>
+<script src="js/app.js?v=32"></script>
+</body>
+</html>
