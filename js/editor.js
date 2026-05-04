@@ -60,6 +60,15 @@
   // ---- DOM helpers ----
   const $ = (id) => document.getElementById(id);
 
+  // Подгоняет высоту textarea под содержимое (для браузеров без
+  // field-sizing: content, например Firefox).
+  const SUPPORTS_FIELD_SIZING = (typeof CSS !== 'undefined') && CSS.supports && CSS.supports('field-sizing', 'content');
+  function autoResize(ta) {
+    if (SUPPORTS_FIELD_SIZING) return;
+    ta.style.height = 'auto';
+    ta.style.height = (ta.scrollHeight + 2) + 'px';
+  }
+
   function escapeJsString(s) {
     return String(s || '')
       .replace(/\\/g, '\\\\')
@@ -192,10 +201,11 @@
     function makeTextarea(field) {
       const td = document.createElement('td');
       const ta = document.createElement('textarea');
-      ta.rows = 1;
+      ta.rows = 2;
       ta.value = row[field] || '';
       ta.addEventListener('input', () => {
         row[field] = ta.value;
+        autoResize(ta);
         validate();
       });
       td.appendChild(ta);
@@ -263,6 +273,10 @@
     $('btn-editor-apply').disabled = !state.isUser;
     $('btn-editor-download').disabled = false; // скачать можно любой
     document.querySelector('.editor-panel').classList.toggle('editor-readonly', !state.isUser);
+    // Подогнать высоту всех textarea под содержимое (для браузеров без field-sizing).
+    if (!SUPPORTS_FIELD_SIZING) {
+      tbody.querySelectorAll('textarea').forEach(autoResize);
+    }
     validate();
   }
 

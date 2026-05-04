@@ -626,7 +626,8 @@ body.mode-editor .history-panel { display: none; }
   color: var(--color-fg);
   font: inherit;
   font-size: 13px;
-  resize: vertical;
+  resize: none;
+  display: block;
 }
 .editor-table input:focus,
 .editor-table textarea:focus,
@@ -634,12 +635,23 @@ body.mode-editor .history-panel { display: none; }
   outline: 2px solid var(--color-accent);
   background: var(--color-input-bg);
 }
+.editor-table td { vertical-align: top; }
 .editor-table .col-word input { font-weight: 600; text-transform: uppercase; }
-.editor-table .col-actions { width: 36px; text-align: center; padding: 4px; }
+.editor-table .col-actions { width: 36px; text-align: center; padding: 4px; vertical-align: middle; }
 .editor-table .col-diff,
-.editor-table .col-theme { width: 88px; }
-.editor-table .col-len { width: 36px; text-align: center; padding: 6px 4px; color: var(--color-muted); font-size: 12px; }
-.editor-table textarea { min-height: 28px; max-height: 120px; line-height: 1.3; }
+.editor-table .col-theme { width: 100px; vertical-align: middle; }
+.editor-table .col-len { width: 36px; text-align: center; padding: 8px 4px; color: var(--color-muted); font-size: 12px; vertical-align: middle; }
+.editor-table textarea {
+  min-height: 28px;
+  line-height: 1.35;
+  overflow: hidden;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+/* Современный браузер: textarea растёт по содержимому без JS. */
+@supports (field-sizing: content) {
+  .editor-table textarea { field-sizing: content; }
+}
 
 .editor-row-delete {
   background: transparent;
