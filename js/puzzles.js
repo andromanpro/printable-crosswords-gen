@@ -58,7 +58,8 @@
         size: grid.size,
         cells: grid.cells,
         placements: grid.placements
-      }
+      },
+      userInput: {} // карта "row,col" → буква, обновляется через updateUserInput
     };
     data.puzzles.push(entry);
     if (data.puzzles.length > MAX) {
@@ -87,6 +88,16 @@
     write({ puzzles: [] });
   }
 
+  // Обновляет карту userInput для конкретного puzzle. Вызывается с debounce
+  // из app.js при каждом нажатии буквы пользователем.
+  function updateUserInput(id, map) {
+    const data = read();
+    const entry = data.puzzles.find(p => p.id === id);
+    if (!entry) return;
+    entry.userInput = map || {};
+    write(data);
+  }
+
   function count() {
     return read().puzzles.length;
   }
@@ -96,5 +107,5 @@
   }
 
   window.CW = window.CW || {};
-  CW.Puzzles = { save, list, get, remove, clear, count, isPersistent, MAX };
+  CW.Puzzles = { save, list, get, remove, clear, count, isPersistent, updateUserInput, MAX };
 })();

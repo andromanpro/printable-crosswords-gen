@@ -300,6 +300,9 @@ main {
 .cell.block {
   background: var(--color-block);
 }
+.cell:not(.block) {
+  cursor: pointer;
+}
 .cell .num {
   position: absolute;
   top: 1px;
@@ -313,6 +316,36 @@ main {
 }
 .show-answers .cell .ans { display: block; }
 .show-answers .cell.block .ans { display: none; }
+
+/* Пользовательский ввод: показывается всегда (если есть userInput),
+   но при включенном «Показать ответы» уступает место правильному ответу. */
+.cell .user-letter {
+  font-weight: 700;
+  color: #1a4a8a;
+  user-select: none;
+  pointer-events: none;
+}
+.show-answers .cell .user-letter { display: none; }
+body.theme-dark .cell .user-letter { color: #6cb4ff; }
+
+/* Активная клетка (cursor) и подсветка слова */
+.cell.solve-active {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+  z-index: 1;
+}
+.cell.solve-highlight {
+  background: #fff7e6;
+}
+body.theme-dark .cell.solve-highlight {
+  background: #3a3520;
+}
+
+/* Результат проверки */
+.cell.solve-error .user-letter { color: #c01010; }
+.cell.solve-correct .user-letter { color: #2a7a2a; }
+body.theme-dark .cell.solve-error .user-letter { color: #ff6060; }
+body.theme-dark .cell.solve-correct .user-letter { color: #5cd05c; }
 
 .clues-container {
   display: grid;

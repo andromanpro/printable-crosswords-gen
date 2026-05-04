@@ -59,6 +59,12 @@
     });
     document.getElementById('input-upload-pack').addEventListener('change', onUploadPack);
 
+    // Режим решения: клик по сетке (через делегирование) и глобальная клавиатура.
+    document.getElementById('grid-container').addEventListener('click', onCellClick);
+    document.addEventListener('keydown', onSolveKeydown);
+    document.getElementById('btn-check').addEventListener('click', onCheck);
+    document.getElementById('btn-clear-input').addEventListener('click', onClearInput);
+
     applyFontSize();
     applyFitA4();
     applyHideAnswers();
@@ -318,6 +324,11 @@
 
     currentGrid = entry.grid;
     currentPuzzleId = id;
+    // Сброс активной клетки и применение сохранённого прогресса перед рендером,
+    // чтобы userInput'ы попали в DOM на первом же renderGrid.
+    solveActiveCell = null;
+    solveDir = 'A';
+    restoreSolveProgress();
 
     // Восстанавливаем состояние UI чтобы соответствовать сохранённой записи
     const titleEl = document.getElementById('puzzle-title');
@@ -472,6 +483,264 @@
     ansContainer.classList.remove('visible');
     document.getElementById('btn-toggle-answers').textContent = 'Показать ответы';
     gridContainer.classList.remove('show-answers');
+
+    // Сброс активной клетки и подсветок при новой генерации/перерендере
+    solveActiveCell = null;
+    solveDir = 'A';
+  }
+
+  // ===== Режим решения в браузере =====
+
+  let solveActiveCell = null; // {row, col} или null
+  let solveDir = 'A';         // 'A' = ACROSS, 'D' = DOWN
+
+  function isSolvable(r, c) {
+    if (!currentGrid) return false;
+    if (r < 0 || c < 0 || r >= currentGrid.size || c >= currentGrid.size) return false;
+    const cell = currentGrid.cells[r][c];
+    return cell && !cell.isBlock;
+  }
+
+  function findPlacementAt(r, c, dir) {
+    if (!currentGrid) return null;
+    for (const p of currentGrid.placements) {
+      if (p.dir !== dir) continue;
+      const dr = dir === 'D' ? 1 : 0;
+      const dc = dir === 'A' ? 1 : 0;
+      for (let i = 0; i < p.len; i++) {
+        if (p.row + dr * i === r && p.col + dc * i === c) return p;
+      }
+    }
+    return null;
+  }
+
+  function gridContainerEl() {
+    return document.getElementById('grid-container');
+  }
+
+  function getCellEl(r, c) {
+    const root = gridContainerEl();
+    if (!root) return null;
+    // Берём только из основной сетки (не из answer-key inner grid).
+    // Основная сетка — первый .grid внутри grid-container.
+    const grid = root.querySelector(':scope > .grid');
+    if (!grid) return null;
+    return grid.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+  }
+
+  function clearSolveHighlights() {
+    const root = gridContainerEl();
+    if (!root) return;
+    root.querySelectorAll('.cell.solve-active, .cell.solve-highlight').forEach(el => {
+      el.classList.remove('solve-active', 'solve-highlight');
+    });
+  }
+
+  function applySolveHighlight() {
+    clearSolveHighlights();
+    if (!solveActiveCell || !currentGrid) return;
+    const { row, col } = solveActiveCell;
+    // Подсветить слово в текущем направлении (или fallback на другое если в текущем нет)
+    let placement = findPlacementAt(row, col, solveDir);
+    if (!placement) {
+      const altDir = solveDir === 'A' ? 'D' : 'A';
+      placement = findPlacementAt(row, col, altDir);
+      if (placement) solveDir = altDir;
+    }
+    if (placement) {
+      const dr = placement.dir === 'D' ? 1 : 0;
+      const dc = placement.dir === 'A' ? 1 : 0;
+      for (let i = 0; i < placement.len; i++) {
+        const el = getCellEl(placement.row + dr * i, placement.col + dc * i);
+        if (el) el.classList.add('solve-highlight');
+      }
+    }
+    const activeEl = getCellEl(row, col);
+    if (activeEl) activeEl.classList.add('solve-active');
+  }
+
+  function setActiveCell(r, c) {
+    if (!isSolvable(r, c)) return;
+    solveActiveCell = { row: r, col: c };
+    applySolveHighlight();
+  }
+
+  function moveCursor(dr, dc) {
+    if (!solveActiveCell || !currentGrid) return;
+    let r = solveActiveCell.row + dr;
+    let c = solveActiveCell.col + dc;
+    while (r >= 0 && c >= 0 && r < currentGrid.size && c < currentGrid.size) {
+      if (isSolvable(r, c)) {
+        setActiveCell(r, c);
+        return;
+      }
+      r += dr; c += dc;
+    }
+  }
+
+  function setCellUserInput(r, c, letter) {
+    if (!isSolvable(r, c)) return;
+    currentGrid.cells[r][c].userInput = letter || null;
+    const el = getCellEl(r, c);
+    if (el) {
+      const ui = el.querySelector('.user-letter');
+      if (ui) ui.textContent = letter || '';
+      el.classList.remove('solve-error', 'solve-correct');
+    }
+    saveSolveProgress();
+  }
+
+  function onCellClick(ev) {
+    const cell = ev.target.closest('.cell');
+    if (!cell) return;
+    const root = gridContainerEl();
+    if (!root || !root.contains(cell)) return;
+    if (cell.classList.contains('block')) return;
+    const r = parseInt(cell.dataset.row, 10);
+    const c = parseInt(cell.dataset.col, 10);
+    if (Number.isNaN(r) || Number.isNaN(c)) return;
+    // Повторный клик в активную клетку — переключить направление
+    if (solveActiveCell && solveActiveCell.row === r && solveActiveCell.col === c) {
+      solveDir = solveDir === 'A' ? 'D' : 'A';
+    }
+    setActiveCell(r, c);
+  }
+
+  function onSolveKeydown(ev) {
+    const tag = (ev.target.tagName || '').toUpperCase();
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || ev.target.isContentEditable) return;
+    if (!solveActiveCell || !currentGrid) return;
+    const key = ev.key;
+    if (key === 'ArrowUp') { ev.preventDefault(); solveDir = 'D'; moveCursor(-1, 0); return; }
+    if (key === 'ArrowDown') { ev.preventDefault(); solveDir = 'D'; moveCursor(1, 0); return; }
+    if (key === 'ArrowLeft') { ev.preventDefault(); solveDir = 'A'; moveCursor(0, -1); return; }
+    if (key === 'ArrowRight') { ev.preventDefault(); solveDir = 'A'; moveCursor(0, 1); return; }
+    if (key === 'Tab' || key === ' ') {
+      ev.preventDefault();
+      solveDir = solveDir === 'A' ? 'D' : 'A';
+      applySolveHighlight();
+      return;
+    }
+    if (key === 'Escape') {
+      ev.preventDefault();
+      solveActiveCell = null;
+      clearSolveHighlights();
+      return;
+    }
+    if (key === 'Backspace') {
+      ev.preventDefault();
+      const { row, col } = solveActiveCell;
+      const cur = currentGrid.cells[row][col].userInput;
+      if (cur) {
+        setCellUserInput(row, col, '');
+      } else {
+        const dr = solveDir === 'D' ? -1 : 0;
+        const dc = solveDir === 'A' ? -1 : 0;
+        moveCursor(dr, dc);
+        const a = solveActiveCell;
+        if (a) setCellUserInput(a.row, a.col, '');
+      }
+      return;
+    }
+    if (key === 'Delete') {
+      ev.preventDefault();
+      setCellUserInput(solveActiveCell.row, solveActiveCell.col, '');
+      return;
+    }
+    // Русская буква
+    if (key.length === 1) {
+      const ch = key.toUpperCase().replace('Ё', 'Е');
+      if (/^[А-Я]$/.test(ch)) {
+        ev.preventDefault();
+        const { row, col } = solveActiveCell;
+        setCellUserInput(row, col, ch);
+        const dr = solveDir === 'D' ? 1 : 0;
+        const dc = solveDir === 'A' ? 1 : 0;
+        moveCursor(dr, dc);
+      }
+    }
+  }
+
+  function onCheck() {
+    if (!currentGrid) return;
+    let total = 0, correct = 0;
+    for (let r = 0; r < currentGrid.size; r++) {
+      for (let c = 0; c < currentGrid.size; c++) {
+        const cell = currentGrid.cells[r][c];
+        if (cell.isBlock) continue;
+        const el = getCellEl(r, c);
+        if (!el) continue;
+        el.classList.remove('solve-error', 'solve-correct');
+        const userIn = cell.userInput;
+        if (!userIn) continue;
+        total++;
+        const expected = (cell.ch || '').toUpperCase();
+        if (userIn === expected) {
+          el.classList.add('solve-correct');
+          correct++;
+        } else {
+          el.classList.add('solve-error');
+        }
+      }
+    }
+    const statusEl = document.getElementById('status');
+    if (statusEl && total > 0) {
+      statusEl.textContent = `Проверка: ${correct} из ${total} верно. ${correct === total ? '🎉' : ''}`;
+    }
+  }
+
+  function onClearInput() {
+    if (!currentGrid) return;
+    if (!confirm('Стереть все введённые буквы?')) return;
+    for (let r = 0; r < currentGrid.size; r++) {
+      for (let c = 0; c < currentGrid.size; c++) {
+        const cell = currentGrid.cells[r][c];
+        if (cell.isBlock) continue;
+        cell.userInput = null;
+        const el = getCellEl(r, c);
+        if (el) {
+          el.classList.remove('solve-error', 'solve-correct');
+          const ui = el.querySelector('.user-letter');
+          if (ui) ui.textContent = '';
+        }
+      }
+    }
+    saveSolveProgress();
+  }
+
+  // Сохранение прогресса в puzzle entry с debounce, чтобы каждое нажатие
+  // не лезло в localStorage.
+  let saveTimer = null;
+  function saveSolveProgress() {
+    if (!currentPuzzleId || !currentGrid) return;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const map = {};
+      for (let r = 0; r < currentGrid.size; r++) {
+        for (let c = 0; c < currentGrid.size; c++) {
+          const ui = currentGrid.cells[r][c].userInput;
+          if (ui) map[r + ',' + c] = ui;
+        }
+      }
+      if (CW.Puzzles && typeof CW.Puzzles.updateUserInput === 'function') {
+        CW.Puzzles.updateUserInput(currentPuzzleId, map);
+      }
+      saveTimer = null;
+    }, 400);
+  }
+
+  function restoreSolveProgress() {
+    if (!currentPuzzleId || !currentGrid) return;
+    const entry = CW.Puzzles.get(currentPuzzleId);
+    if (!entry || !entry.userInput) return;
+    for (const key in entry.userInput) {
+      const parts = key.split(',');
+      const r = parseInt(parts[0], 10);
+      const c = parseInt(parts[1], 10);
+      if (currentGrid.cells[r] && currentGrid.cells[r][c]) {
+        currentGrid.cells[r][c].userInput = entry.userInput[key];
+      }
+    }
   }
 
   function onToggleAnswers() {

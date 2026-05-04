@@ -44,6 +44,8 @@
         const cell = grid.cells[r][c];
         const el = document.createElement('div');
         el.className = 'cell';
+        el.dataset.row = r;
+        el.dataset.col = c;
         if (cell.isBlock) {
           el.classList.add('block');
         } else {
@@ -57,6 +59,11 @@
           ans.className = 'ans';
           ans.textContent = cell.ch || '';
           el.appendChild(ans);
+          // Пользовательский ввод (отдельный span, чтобы не мешать показу ответов).
+          const ui = document.createElement('span');
+          ui.className = 'user-letter';
+          ui.textContent = cell.userInput || '';
+          el.appendChild(ui);
         }
         div.appendChild(el);
       }
