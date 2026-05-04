@@ -103,6 +103,10 @@
   /* На основной странице ответы не показываются */
   .grid-container .cell .ans { display: none !important; }
 
+  /* Введённые пользователем буквы не печатаются — печатаем чистую сетку
+     даже если в браузере она частично заполнена. */
+  .cell .user-letter { display: none !important; }
+
   /* Список определений — 2 колонки под сеткой */
   .clues-container {
     display: block !important;
