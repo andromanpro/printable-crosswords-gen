@@ -8,10 +8,12 @@
   let serial = 1;
 
   function init() {
-    if (!window.CW || !CW.WORDS || CW.WORDS.length === 0) {
-      showError('Корпус слов не загружен. Проверьте, что файл data/words.js доступен.');
+    if (!window.CW || !CW.WORDS) {
+      showError('Ошибка инициализации движка.');
       return;
     }
+    // Пустой корпус — допускается (например, чистая версия index-empty.html).
+    // UI остаётся рабочим, пользователь сможет загрузить пак через редактор/upload.
     serial = parseInt(localStorage.getItem('cw_serial') || '1', 10) || 1;
 
     // Восстанавливаем сохранённую тему оформления, если есть
@@ -808,12 +810,22 @@
     const el = document.getElementById('status');
     const cnt = CW.History.count();
     const corpusTotal = CW.WORDS?.length || 0;
+    if (corpusTotal === 0 && !result) {
+      // Пустой корпус — оставляем подсказку из HTML, но обновляем при необходимости.
+      // Если в HTML был задан текст с инструкцией — не затираем.
+      if (!el.dataset.preserveEmpty) {
+        el.textContent = 'Корпус пуст. Откройте «✎ Редактор корпусов» → «+ Новый пак», либо загрузите готовый .js-пак через «+ Загрузить свой пак».';
+        el.dataset.preserveEmpty = '1';
+      }
+      return;
+    }
     let txt = `Корпус: ${corpusTotal} слов · В истории показанных: ${cnt} / ${CW.History.MAX_ENTRIES}.`;
     if (!CW.History.isPersistent()) txt += ' (История не сохраняется — localStorage недоступен.)';
     if (result && result.metrics) {
       txt = `Размещено слов: ${result.metrics.placed}. Пересечений: ${result.metrics.intersections}. ` + txt;
     }
     el.textContent = txt;
+    delete el.dataset.preserveEmpty;
   }
 
   function showError(msg) {

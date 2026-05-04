@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Генератор кроссвордов — конструктор</title>
+  <link rel="stylesheet" href="css/ui.css?v=35">
+  <link rel="stylesheet" href="css/print.css?v=35">
+</head>
+<body>
+
+<header class="controls">
+  <h1 class="app-title">Генератор кроссвордов — конструктор</h1>
+  <p class="app-sub">Чистая версия. Соберите свой корпус через редактор или загрузите готовый <code>.js</code>-пак.</p>
+
+  <button id="btn-toggle-settings" type="button" class="btn-toggle-settings">
+    <span class="caret">▶</span> Настройки
+  </button>
+
+  <div class="ctrl-grid" id="ctrl-grid">
+
+    <fieldset class="ctrl-group">
+      <legend>Размер</legend>
+      <label><input type="radio" name="size" value="11"> S 11×11</label>
+      <label><input type="radio" name="size" value="13" checked> M 13×13</label>
+      <label><input type="radio" name="size" value="15"> L 15×15</label>
+      <label><input type="radio" name="size" value="21"> XL 21×21</label>
+      <label><input type="radio" name="size" value="25"> XXL 25×25</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group">
+      <legend>Сложность</legend>
+      <label><input type="radio" name="difficulty" value="1"> Лёгкая</label>
+      <label><input type="radio" name="difficulty" value="2"> Средняя</label>
+      <label><input type="radio" name="difficulty" value="3"> Сложная</label>
+      <label><input type="radio" name="difficulty" value="mixed" checked> Любые (вперемешку)</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group">
+      <legend>Тема</legend>
+      <label><input type="radio" name="theme" value="70_30" checked> 70/30 (приоритет sport)</label>
+      <label><input type="radio" name="theme" value="100_sport"> 100% sport</label>
+      <label><input type="radio" name="theme" value="50_50"> 50/50</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group">
+      <legend>Размер шрифта</legend>
+      <label><input type="radio" name="fontsize" value="small"> Мелкий</label>
+      <label><input type="radio" name="fontsize" value="medium" checked> Средний</label>
+      <label><input type="radio" name="fontsize" value="large"> Крупный</label>
+      <label><input type="radio" name="fontsize" value="xlarge"> Очень крупный</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group">
+      <legend>Стиль подсказок</legend>
+      <label><input type="radio" name="cluestyle" value="direct" checked> Прямые (фактические)</label>
+      <label><input type="radio" name="cluestyle" value="cryptic"> Хитрые (с намёком)</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group">
+      <legend>Тема оформления</legend>
+      <label><input type="radio" name="theme-ui" value="light" checked> Светлая</label>
+      <label><input type="radio" name="theme-ui" value="dark"> Тёмная</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group">
+      <legend>Печать</legend>
+      <label><input type="checkbox" id="fit-a4"> Уместить всё на 1 лист A4</label>
+      <label><input type="checkbox" id="hide-answers-print"> Не печатать ответы</label>
+    </fieldset>
+
+    <fieldset class="ctrl-group ctrl-packs" id="packs-fieldset">
+      <legend>Тематические паки</legend>
+      <div id="packs-list" class="packs-list">
+        <span class="status-muted">Загрузка…</span>
+      </div>
+      <div class="packs-upload">
+        <button type="button" id="btn-upload-pack" class="btn-subtle" title="Загрузить свой пак из .js-файла. См. README → «Свой корпус слов».">
+          + Загрузить свой пак
+        </button>
+        <input type="file" id="input-upload-pack" accept=".js" hidden>
+        <span id="upload-pack-status" class="upload-pack-status"></span>
+      </div>
+    </fieldset>
+
+  </div>
+
+  <div class="ctrl-buttons">
+    <button id="btn-generate" type="button" class="btn-primary">Сгенерировать</button>
+    <button id="btn-check" type="button" title="Проверить введённые буквы (зелёные — верно, красные — нет)">Проверить</button>
+    <button id="btn-clear-input" type="button" title="Стереть всё, что ввёл">Очистить введённое</button>
+    <button id="btn-toggle-answers" type="button">Показать ответы</button>
+    <button id="btn-print" type="button">Печать всё</button>
+    <button id="btn-print-grid" type="button" title="Печать только сетки (без вопросов)">Печать сетки</button>
+    <button id="btn-print-clues" type="button" title="Печать только вопросов крупным шрифтом">Печать вопросов</button>
+    <button id="btn-reset-history" type="button" class="btn-subtle">Сбросить историю</button>
+    <button id="btn-open-editor" type="button" class="btn-subtle" title="Открыть редактор корпусов слов">✎ Редактор корпусов</button>
+  </div>
+
+  <p class="status" id="status">Корпус пуст. Откройте «✎ Редактор корпусов» → «+ Новый пак», либо загрузите готовый <code>.js</code>-пак через «+ Загрузить свой пак» в настройках.</p>
+</header>
+
+<main>
+  <p id="history-banner" class="history-banner"></p>
+  <h2 class="puzzle-title" id="puzzle-title"></h2>
+  <div id="grid-container" class="grid-container"></div>
+  <div id="clues-container" class="clues-container"></div>
+  <div id="answer-key" class="answer-key"></div>
+</main>
+
+<section class="editor-panel" id="editor-panel">
+  <div class="editor-toolbar">
+    <button id="btn-editor-back" type="button" class="btn-subtle">← К кроссворду</button>
+    <select id="editor-pack-select" title="Выбрать пак для просмотра/редактирования"></select>
+    <button id="btn-editor-new" type="button" class="btn-subtle">+ Новый пак</button>
+    <button id="btn-editor-clone" type="button" class="btn-subtle" title="Создать редактируемую копию текущего пака">⧉ Клонировать</button>
+    <span class="editor-toolbar-spacer"></span>
+    <span id="editor-readonly-tag" class="editor-readonly-tag" hidden>read-only (встроенный пак)</span>
+  </div>
+
+  <div class="editor-pack-meta">
+    <div>
+      <label>Название пака</label>
+      <input type="text" id="editor-pack-name" placeholder="Литература">
+    </div>
+    <div>
+      <label>Описание</label>
+      <input type="text" id="editor-pack-description" placeholder="Русская и мировая классика">
+    </div>
+    <div>
+      <label>ID</label>
+      <span id="editor-pack-id" class="pack-id-readonly">—</span>
+    </div>
+  </div>
+
+  <div class="editor-stats" id="editor-stats">—</div>
+
+  <div class="editor-table-wrap">
+    <table class="editor-table">
+      <thead>
+        <tr>
+          <th class="col-word">Слово</th>
+          <th class="col-len">Дл.</th>
+          <th>Прямая подсказка</th>
+          <th>Хитрая 1</th>
+          <th>Хитрая 2</th>
+          <th>Хитрая 3</th>
+          <th class="col-theme">Тема</th>
+          <th class="col-diff">Сл.</th>
+          <th class="col-actions"></th>
+        </tr>
+      </thead>
+      <tbody id="editor-tbody"></tbody>
+    </table>
+  </div>
+
+  <button type="button" class="editor-add-row" id="btn-editor-add-row">+ Добавить слово</button>
+
+  <div class="editor-footer">
+    <button id="btn-editor-apply" type="button" class="btn-primary" title="Применить изменения и обновить корпус">✓ Применить</button>
+    <button id="btn-editor-download" type="button">⬇ Скачать .js</button>
+    <button id="btn-editor-delete-pack" type="button" class="btn-subtle" title="Удалить весь пак">🗑 Удалить пак</button>
+    <span id="editor-status" class="editor-footer-status"></span>
+  </div>
+</section>
+
+<section class="history-panel" id="history-panel">
+  <div class="history-header">
+    <h2 class="history-title">История <span id="history-count" class="history-count"></span></h2>
+    <div class="history-buttons">
+      <button id="btn-history-toggle" type="button" class="btn-subtle">Показать</button>
+      <button id="btn-history-clear" type="button" class="btn-subtle">Очистить</button>
+    </div>
+  </div>
+  <ul id="history-list" class="history-list"></ul>
+</section>
+
+<!--
+  Чистая версия без встроенного корпуса. Базовый CW.BASE_WORDS_RAW пуст;
+  корпус собирается из user-паков (загруженных через UI или редактор).
+  Если хотите подключить свои тематические паки на этапе сборки —
+  добавьте сюда <script src="data/pack-X.js"> рядом с пустым inline скриптом ниже.
+-->
+<script>window.CW = window.CW || {}; CW.BASE_WORDS_RAW = [];</script>
+<script src="js/data-loader.js?v=35"></script>
+<script src="js/editor.js?v=35"></script>
+<script src="js/rng.js?v=35"></script>
+<script src="js/history.js?v=35"></script>
+<script src="js/puzzles.js?v=35"></script>
+<script src="js/grid.js?v=35"></script>
+<script src="js/generator-classic.js?v=35"></script>
+<script src="js/renderer.js?v=35"></script>
+<script src="js/app.js?v=35"></script>
+</body>
+</html>
