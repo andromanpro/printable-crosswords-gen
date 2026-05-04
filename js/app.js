@@ -65,6 +65,16 @@
     document.getElementById('btn-check').addEventListener('click', onCheck);
     document.getElementById('btn-clear-input').addEventListener('click', onClearInput);
 
+    // Редактор корпусов: открыть и hook для применённых изменений.
+    document.getElementById('btn-open-editor').addEventListener('click', () => {
+      if (CW.Editor) CW.Editor.show();
+    });
+    // Когда editor применил/удалил пак — пересобрать UI основной страницы.
+    window.onEditorPackUpdated = function () {
+      renderPacksList();
+      updateStatus();
+    };
+
     applyFontSize();
     applyFitA4();
     applyHideAnswers();

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Генератор кроссвордов</title>
-  <link rel="stylesheet" href="css/ui.css?v=34">
-  <link rel="stylesheet" href="css/print.css?v=34">
+  <link rel="stylesheet" href="css/ui.css?v=35">
+  <link rel="stylesheet" href="css/print.css?v=35">
 </head>
 <body>
 
@@ -93,6 +93,7 @@
     <button id="btn-print-grid" type="button" title="Печать только сетки (без вопросов)">Печать сетки</button>
     <button id="btn-print-clues" type="button" title="Печать только вопросов крупным шрифтом">Печать вопросов</button>
     <button id="btn-reset-history" type="button" class="btn-subtle">Сбросить историю</button>
+    <button id="btn-open-editor" type="button" class="btn-subtle" title="Открыть редактор корпусов слов">✎ Редактор корпусов</button>
   </div>
 
   <p class="status" id="status">Нажмите «Сгенерировать», чтобы создать первый кроссворд.</p>
@@ -106,6 +107,62 @@
   <div id="answer-key" class="answer-key"></div>
 </main>
 
+<section class="editor-panel" id="editor-panel">
+  <div class="editor-toolbar">
+    <button id="btn-editor-back" type="button" class="btn-subtle">← К кроссворду</button>
+    <select id="editor-pack-select" title="Выбрать пак для просмотра/редактирования"></select>
+    <button id="btn-editor-new" type="button" class="btn-subtle">+ Новый пак</button>
+    <button id="btn-editor-clone" type="button" class="btn-subtle" title="Создать редактируемую копию текущего пака">⧉ Клонировать</button>
+    <span class="editor-toolbar-spacer"></span>
+    <span id="editor-readonly-tag" class="editor-readonly-tag" hidden>read-only (встроенный пак)</span>
+  </div>
+
+  <div class="editor-pack-meta">
+    <div>
+      <label>Название пака</label>
+      <input type="text" id="editor-pack-name" placeholder="Литература">
+    </div>
+    <div>
+      <label>Описание</label>
+      <input type="text" id="editor-pack-description" placeholder="Русская и мировая классика">
+    </div>
+    <div>
+      <label>ID</label>
+      <span id="editor-pack-id" class="pack-id-readonly">—</span>
+    </div>
+  </div>
+
+  <div class="editor-stats" id="editor-stats">—</div>
+
+  <div class="editor-table-wrap">
+    <table class="editor-table">
+      <thead>
+        <tr>
+          <th class="col-word">Слово</th>
+          <th class="col-len">Дл.</th>
+          <th>Прямая подсказка</th>
+          <th>Хитрая 1</th>
+          <th>Хитрая 2</th>
+          <th>Хитрая 3</th>
+          <th class="col-theme">Тема</th>
+          <th class="col-diff">Сл.</th>
+          <th class="col-actions"></th>
+        </tr>
+      </thead>
+      <tbody id="editor-tbody"></tbody>
+    </table>
+  </div>
+
+  <button type="button" class="editor-add-row" id="btn-editor-add-row">+ Добавить слово</button>
+
+  <div class="editor-footer">
+    <button id="btn-editor-apply" type="button" class="btn-primary" title="Применить изменения и обновить корпус">✓ Применить</button>
+    <button id="btn-editor-download" type="button">⬇ Скачать .js</button>
+    <button id="btn-editor-delete-pack" type="button" class="btn-subtle" title="Удалить весь пак">🗑 Удалить пак</button>
+    <span id="editor-status" class="editor-footer-status"></span>
+  </div>
+</section>
+
 <section class="history-panel" id="history-panel">
   <div class="history-header">
     <h2 class="history-title">История <span id="history-count" class="history-count"></span></h2>
@@ -117,27 +174,28 @@
   <ul id="history-list" class="history-list"></ul>
 </section>
 
-<script src="data/words.js?v=34"></script>
-<script src="data/pack-power-sports.js?v=34"></script>
-<script src="data/pack-ta-world.js?v=34"></script>
-<script src="data/pack-champions-ussr.js?v=34"></script>
-<script src="data/pack-olympic-culture.js?v=34"></script>
-<script src="data/pack-spirit-witty.js?v=34"></script>
-<script src="data/pack-hockey.js?v=34"></script>
-<script src="data/pack-football.js?v=34"></script>
-<script src="data/pack-snooker.js?v=34"></script>
-<script src="data/pack-combat-sports.js?v=34"></script>
-<script src="data/pack-winter-sports.js?v=34"></script>
-<script src="data/pack-figure-rhythmic.js?v=34"></script>
-<script src="data/pack-tennis.js?v=34"></script>
-<script src="data/pack-world-stars.js?v=34"></script>
-<script src="js/data-loader.js?v=34"></script>
-<script src="js/rng.js?v=34"></script>
-<script src="js/history.js?v=34"></script>
-<script src="js/puzzles.js?v=34"></script>
-<script src="js/grid.js?v=34"></script>
-<script src="js/generator-classic.js?v=34"></script>
-<script src="js/renderer.js?v=34"></script>
-<script src="js/app.js?v=34"></script>
+<script src="data/words.js?v=35"></script>
+<script src="data/pack-power-sports.js?v=35"></script>
+<script src="data/pack-ta-world.js?v=35"></script>
+<script src="data/pack-champions-ussr.js?v=35"></script>
+<script src="data/pack-olympic-culture.js?v=35"></script>
+<script src="data/pack-spirit-witty.js?v=35"></script>
+<script src="data/pack-hockey.js?v=35"></script>
+<script src="data/pack-football.js?v=35"></script>
+<script src="data/pack-snooker.js?v=35"></script>
+<script src="data/pack-combat-sports.js?v=35"></script>
+<script src="data/pack-winter-sports.js?v=35"></script>
+<script src="data/pack-figure-rhythmic.js?v=35"></script>
+<script src="data/pack-tennis.js?v=35"></script>
+<script src="data/pack-world-stars.js?v=35"></script>
+<script src="js/data-loader.js?v=35"></script>
+<script src="js/editor.js?v=35"></script>
+<script src="js/rng.js?v=35"></script>
+<script src="js/history.js?v=35"></script>
+<script src="js/puzzles.js?v=35"></script>
+<script src="js/grid.js?v=35"></script>
+<script src="js/generator-classic.js?v=35"></script>
+<script src="js/renderer.js?v=35"></script>
+<script src="js/app.js?v=35"></script>
 </body>
 </html>
