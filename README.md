@@ -186,3 +186,7 @@ Vanilla JavaScript, HTML, CSS. Без бандлеров, без `node_modules`,
 ## Лицензия
 
 MIT — см. [LICENSE](LICENSE).
+
+---
+
+🌐 [androman.pro](https://androman.pro) · ✈ [Telegram](https://t.me/andromanpro1c)
